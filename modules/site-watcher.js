@@ -1,8 +1,7 @@
-const config = require('./config.json')
-const fetch = require('node-fetch')
+const config = require('../config.json')
+const { request } = require('../utils')
 
 let { SITE_WEBHOOK, SLOW_WEBHOOK } = config
-let lastMean = 0
 
 let hosts = [
   {
@@ -15,53 +14,35 @@ let hosts = [
   }
 ]
 
-async function httpRequest(url) {
-  let body, error
-
-  for (let i = 0; i < 3; i++) {
-    try {
-      body = await fetch(url, {
-        timeout: 15000,
-        compress: true,
-        highWaterMark: 1024 * 1024
-      })
-
-      break
-    } catch (e) {
-      error = e
-    }
-  }
-
-  if (!body && error) throw error
-  return await body.text()
-}
-
 async function checkHost(host) {
   let response = { average: -1 }
   try {
-    response = JSON.parse(await httpRequest(`https://${host.hostname}/.host-proxy/site-response`))
+    response = JSON.parse(await request(`https://${host.hostname}/.host-proxy/site-response`))
   } catch (e) {}
 
   if (response.average === -1) {
+    console.log(`${host.name} Not Responding`);
+
     await request(SITE_WEBHOOK, {
       method: 'POST',
-      json: true,
-      body: {
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
         content: `${host.name} Not Responding: ${new Date().toLocaleString()}`
-      }
+      })
     })
   } else if (response.average >= 3500) {
-    if (response.average !== lastMean) {
-      lastMean = response.average
+    if (response.average !== host.lastMean) {
+      host.lastMean = response.average
 
+      console.log(`${host.name} Very Slow, mean response time ${response.average}`);
       await request(SLOW_WEBHOOK, {
         method: 'POST',
-        json: true,
-        body: {
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
           content: `${host.name} Very Slow:
 Mean Response Time ${response.average}ms
 At: ${new Date().toLocaleString()}`
-        }
+        })
       })
     }
   } else {
@@ -73,7 +54,4 @@ async function check() {
   for (let host of hosts) await checkHost(host)
 }
 
-module.exports = () => {
-  setInterval(check, 5 * 60 * 1000)
-  check()
-}
+module.exports = check
