@@ -1,0 +1,5 @@
+#!/bin/bash
+DIRNAME=$(dirname "$0")
+
+# Note: we do not want sudo or we cannot kill the process
+node $DIRNAME/index.js
