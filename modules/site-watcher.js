@@ -9,7 +9,7 @@ let hosts = [
     name: 'TransportSG'
   },
   {
-    hostname: 'vic.transportsg.me',
+    hostname: 'transportvic.me',
     name: 'TransportVic'
   }
 ]
