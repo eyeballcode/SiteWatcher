@@ -7,9 +7,9 @@ const FormData = require('form-data')
 
 let wonCount = 0
 let wonCountPath = path.join(__dirname, '../won.dat')
-fs.readFile(wonCountPath, (err, data) => {
-  if (data) wonCount = parseInt(data.toString())
-})
+try {
+  wonCount = parseInt(fs.readFileSync(wonCountPath)) || 0
+} catch (e) {}
 
 let { WON_WEBHOOK } = config
 
@@ -24,12 +24,12 @@ async function httpRequest(url) {
 async function check() {
   let body = ''
   try {
-    body = await httpRequest('https://www.railsws.com.au/news/2021/1/11/weekly-operational-notices-wons-2021-z4dab')
+    body = await httpRequest('https://railsws.com.au/news/2024/01/16/weekly-operational-notices-wons-2023-2/')
   } catch (e) {}
 
   let $ = cheerio.load(body)
 
-  let wonButtons = Array.from($('[data-block-type="53"]'))
+  let wonButtons = Array.from($('.wp-block-button'))
   if (wonButtons.length === 0) return // Request must have failed
 
   if (wonButtons.length !== wonCount) {
@@ -38,7 +38,7 @@ async function check() {
     let wonID = wonCount < 10 ? '0' + wonCount : wonCount
     let wonName = `WON-${wonID}-${year}.pdf`
 
-    let url = 'https://www.railsws.com.au' + $('a', wonButtons[wonCount - 1]).attr('href')
+    let url = $('a', wonButtons[wonCount - 1]).attr('href')
     let wonPath = '/tmp/' + wonName
 
     console.log(`Downloading ${wonName} from ${url} to ${wonPath}`)
@@ -66,3 +66,4 @@ async function check() {
 }
 
 module.exports = check
+
